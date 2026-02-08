@@ -1,4 +1,5 @@
 server
 client
-*.c.swp
+.client.c.swp
+.server.c.swp
 *~
