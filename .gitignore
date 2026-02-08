@@ -1,4 +1,4 @@
 server
 client
-*.swp
+*.c.swp
 *~
