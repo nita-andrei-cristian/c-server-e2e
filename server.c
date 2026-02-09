@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -39,14 +40,15 @@ void* client_thread(void* args){
 		recv(input->fd, buffer, buffer_size, 0);
 		printf("Server : Client [%d] sent : [%d] : %s\n", input->fd, userInput, payload);
 
-		char* response[10] = malloc(response_size);
+		char *response = (char*)malloc(response_size);
 
+		strcpy(response, "OK");
 		if (userInput == '1'){
-			response[0] = 'N';	
+			strcpy(response, "NO");
 		};
 	
 		send(input->fd, response, response_size, 0);
-		free(response_size);
+		free(response); 
 	}
 	
 	printf("Semaphore quiting for client (%d)..\n", input->fd);

@@ -53,6 +53,8 @@ int main(){
 			fgets(buffer+1, buffer_size-1, stdin); // ofser by one to exclude the mod
 		}else if(input == 1){
 			*buffer = '1';
+			send(network_socket, buffer, buffer_size, 0);
+			break;
 		}
 	
 		send(network_socket, buffer, buffer_size, 0);
