@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <netinet/in.h>
 
+#define PORT 9009
+
 int main(){
 	int network_socket;
 	network_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -18,7 +20,7 @@ int main(){
 
 	struct sockaddr_in server_address;
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(9003);
+	server_address.sin_port = htons(PORT);
 	server_address.sin_addr.s_addr = INADDR_ANY;
 
 	int connection_status = connect(network_socket, (struct sockaddr*) &server_address, sizeof(server_address));
@@ -28,20 +30,41 @@ int main(){
 	}
 
 
-	char buffer[256] = {0};
+	int buffer_size = sizeof(char) * 32;
+	// client buffer format
+	// [0] = 0-255 character (mod character)
+	// [1 -> n-1] = message
+	// [n] = \0
+	// n < 256
+	
+	char server_response[256];
+
 	while (1){
-		bzero(buffer, sizeof(buffer));
+		char *buffer = (char*)malloc(buffer_size);
 
-		printf("Enter a message:");
-		fgets(buffer, 256, stdin);
-		send(network_socket, &buffer, sizeof(buffer), 0);
+		printf("Select an action:\n[0] : send message\n[1] : quit\n");
+		int input;
+		scanf("%d *[^\n]", &input);
+		fflush(stdin);
 
-		bzero(buffer, sizeof(buffer));
-		recv(network_socket, &buffer, sizeof(buffer), 0);
+		if (input == 0){
+			*buffer = '0';
+			printf("Enter a message:");
+			fgets(buffer+1, buffer_size-1, stdin); // ofser by one to exclude the mod
+		}else if(input == 1){
+			*buffer = '1';
+		}
+	
+		send(network_socket, buffer, buffer_size, 0);
+		
+		free(buffer);
 
-		printf("Server responded with [%s]\n", buffer);
+		bzero(server_response, sizeof(server_response));
+		recv(network_socket, &server_response, sizeof(server_response), 0);
 
-		if (strcmp(buffer, "OK") != 0) break;
+		printf("Server responded with [%s]\n", server_response);
+
+		if (strcmp(server_response, "OK") != 0) break;
 	}
 	
 	close(network_socket);

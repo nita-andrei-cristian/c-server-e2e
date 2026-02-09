@@ -9,6 +9,9 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#define PORT 9009
+#define MAX_CLIENTS 5
+
 sem_t mutex;
 
 typedef struct {
@@ -21,20 +24,37 @@ void* client_thread(void* args){
 	sem_wait(&mutex);
 	printf("Sempahore starts for client (%d) \n", input->fd);
 
-	char buffer[256];
-	while(1){
-		bzero(buffer, sizeof(buffer));
-		recv(input->fd, &buffer, sizeof(buffer), 0);
-		printf("Server : Client [%d] sent : %s", input->fd, buffer);
+	int buffer_size = sizeof(char) * 32;
+	int response_size = sizeof(char) * 8;
 
-		char response[10] = "OK";
-		send(input->fd, &response, sizeof(response), 0);
+	while(1){
+		printf("Waiting for client response...\n");
+		char *buffer = malloc(buffer_size);
+	
+		char userInput = *buffer;
+		char *payload = (buffer+1);
+	
+		if (userInput == 1){ break; }
+
+		recv(input->fd, buffer, buffer_size, 0);
+		printf("Server : Client [%d] sent : [%d] : %s\n", input->fd, userInput, payload);
+
+		char* response[10] = malloc(response_size);
+
+		if (userInput == '1'){
+			response[0] = 'N';	
+		};
+	
+		send(input->fd, response, response_size, 0);
+		free(response_size);
 	}
 	
 	printf("Semaphore quiting for client (%d)..\n", input->fd);
 	sem_post(&mutex);
-
+	close(input->fd);
+	
 	free(input);
+
 }
 
 int main(){
@@ -50,7 +70,7 @@ int main(){
 
 	struct sockaddr_in server_address;
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(9003);
+	server_address.sin_port = htons(PORT);
 	server_address.sin_addr.s_addr = INADDR_ANY;
 
 	if (bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address)) < 0){
@@ -58,17 +78,21 @@ int main(){
 		exit(EXIT_FAILURE);
 	}
 
-	if (listen(server_socket, 5) < 0){
+	if (listen(server_socket, MAX_CLIENTS) < 0){
 		printf("Socket listening failed\n\n");
 		exit(EXIT_FAILURE);
 	}
 
-	sem_init(&mutex, 0, 5);
-	pthread_t clients_threads[5];
-	int clients_fd[5];
+	sem_init(&mutex, 0, MAX_CLIENTS);
+	pthread_t clients_threads[MAX_CLIENTS];
+	int clients_fd[MAX_CLIENTS];
 	int clients_len = 0;
 
 	while (1){
+		if (clients_len >= MAX_CLIENTS){
+			printf("Client cap reached");
+			break;
+		}
 		int fd =  accept(server_socket,NULL,NULL);
 		clients_fd[clients_len] = fd;
 		if (fd < 0){
@@ -93,7 +117,6 @@ int main(){
 
 	for (int i = 0; i < clients_len; i++){
 		pthread_join(clients_threads[i], NULL);
-		close(clients_fd[i]);
 	}
 
 	sem_destroy(&mutex);
